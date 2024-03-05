@@ -2,10 +2,8 @@
 global:
   scrape_interval: 10s
   evaluation_interval: 10s
-{% if not secure_monitoring_stack %}
   external_labels:
     cluster: {{ cluster_fsid }}
-{% endif %}
 
 rule_files:
   - /etc/prometheus/alerting/*
@@ -38,6 +36,10 @@ scrape_configs:
   - job_name: 'ceph'
 {% if secure_monitoring_stack %}
     scheme: https
+    relabel_configs:
+    - source_labels: [__address__]
+      target_label: cluster
+      replacement: {{ cluster_fsid }}
     tls_config:
       ca_file: mgr_prometheus_cert.pem
     honor_labels: true
@@ -62,6 +64,10 @@ scrape_configs:
   - job_name: 'node'
 {% if secure_monitoring_stack %}
     scheme: https
+    relabel_configs:
+    - source_labels: [__address__]
+      target_label: cluster
+      replacement: {{ cluster_fsid }}
     tls_config:
       ca_file: root_cert.pem
     http_sd_configs:
@@ -85,6 +91,10 @@ scrape_configs:
   - job_name: 'haproxy'
 {% if secure_monitoring_stack %}
     scheme: https
+    relabel_configs:
+    - source_labels: [__address__]
+      target_label: cluster
+      replacement: {{ cluster_fsid }}
     tls_config:
       ca_file: root_cert.pem
     http_sd_configs:
@@ -109,6 +119,10 @@ scrape_configs:
 {% if secure_monitoring_stack %}
     honor_labels: true
     scheme: https
+    relabel_configs:
+    - source_labels: [__address__]
+      target_label: cluster
+      replacement: {{ cluster_fsid }}
     tls_config:
       ca_file: root_cert.pem
     http_sd_configs:
@@ -129,31 +143,23 @@ scrape_configs:
 {% endif %}
 {% endif %}
 
-{% if nvmeof_sd_url %}
-  - job_name: 'nvmeof'
-{% if secure_monitoring_stack %}
+  - job_name: 'federate'
+    scrape_interval: 15s
     honor_labels: true
+    metrics_path: '/federate'
+{% if secure_monitoring_stack %}
     scheme: https
     tls_config:
-      ca_file: root_cert.pem
+      cert_file: prometheus.crt
+      key_file: prometheus.key
     http_sd_configs:
-    - url: {{ nvmeof_sd_url }}
+    - url: {{ federate_sd_url }}
       basic_auth:
         username: {{ service_discovery_username }}
         password: {{ service_discovery_password }}
       tls_config:
         ca_file: root_cert.pem
-{% else %}
-    http_sd_configs:
-    - url: {{ nvmeof_sd_url }}
 {% endif %}
-{% endif %}
-
-{% if not secure_monitoring_stack %}
-  - job_name: 'federate'
-    scrape_interval: 15s
-    honor_labels: true
-    metrics_path: '/federate'
     params:
       'match[]':
         - '{job="ceph"}'
@@ -162,5 +168,4 @@ scrape_configs:
         - '{job="ceph-exporter"}'
     static_configs:
     - targets: {{ external_prometheus_targets }}
-{% endif %}
 

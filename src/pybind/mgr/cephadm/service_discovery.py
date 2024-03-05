@@ -145,6 +145,7 @@ class Root(Server):
 <p><a href='prometheus/sd-config?service=node-exporter'>Node exporter http sd-config</a></p>
 <p><a href='prometheus/sd-config?service=haproxy'>HAProxy http sd-config</a></p>
 <p><a href='prometheus/sd-config?service=ceph-exporter'>Ceph exporter http sd-config</a></p>
+<p><a href='prometheus/sd-config?service=federate'>Prometheus Federation http sd-config</a></p>
 <p><a href='prometheus/rules'>Prometheus rules</a></p>
 </body>
 </html>'''
@@ -163,6 +164,8 @@ class Root(Server):
             return self.haproxy_sd_config()
         elif service == 'ceph-exporter':
             return self.ceph_exporter_sd_config()
+        elif service == 'federate':
+            return self.federate_sd_config()
         else:
             return []
 
@@ -189,6 +192,20 @@ class Root(Server):
             port = dd.ports[0] if dd.ports else AlertmanagerService.DEFAULT_SERVICE_PORT
             srv_entries.append('{}'.format(build_url(host=addr, port=port).lstrip('/')))
         return [{"targets": srv_entries, "labels": {}}]
+    
+    def federate_sd_config(self) -> List[Dict[str, Collection[str]]]:
+        """Return <http_sd_config> compatible prometheus config for prometheus service."""
+        servers = self.mgr.list_servers()
+        targets = []
+        for server in servers:
+            hostname = server.get('hostname', '')
+            for service in cast(List[ServiceInfoT], server.get('services', [])):
+                if service['type'] != 'mgr' or service['id'] != self.mgr.get_mgr_id():
+                    continue
+                port = self.mgr.get_module_option_ex(
+                    'prometheus', 'server_port', PrometheusService.DEFAULT_MGR_PROMETHEUS_PORT)
+                targets.append(f'{hostname}:{port}')
+        return [{"targets": targets, "labels": {}}]
 
     def node_exporter_sd_config(self) -> List[Dict[str, Collection[str]]]:
         """Return <http_sd_config> compatible prometheus config for node-exporter service."""
