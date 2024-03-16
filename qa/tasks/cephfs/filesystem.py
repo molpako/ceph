@@ -226,7 +226,7 @@ class FSStatus(RunCephCmd):
         #all matching
         return False
 
-class CephCluster(RunCephCmd):
+class CephClusterBase(RunCephCmd):
     @property
     def admin_remote(self):
         first_mon = misc.get_first_mon(self._ctx, None)
@@ -296,7 +296,7 @@ class CephCluster(RunCephCmd):
         return False
 
 
-class MDSCluster(CephCluster):
+class MDSClusterBase(CephClusterBase):
     """
     Collective operations on all the MDS daemons in the Ceph cluster.  These
     daemons may be in use by various Filesystems.
@@ -348,7 +348,7 @@ class MDSCluster(CephCluster):
         get_config specialization of service_type="mds"
         """
         if service_type != "mds":
-            return super(MDSCluster, self).get_config(key, service_type)
+            return super(MDSClusterBase, self).get_config(key, service_type)
 
         # Some tests stop MDS daemons, don't send commands to a dead one:
         running_daemons = [i for i, mds in self.mds_daemons.items() if mds.running()]
@@ -510,8 +510,9 @@ class MDSCluster(CephCluster):
         grace = float(self.get_config("mds_beacon_grace", service_type="mon"))
         return grace*2+15
 
+MDSCluster = MDSClusterBase
 
-class Filesystem(MDSCluster):
+class FilesystemBase(MDSClusterBase):
 
     """
     Generator for all Filesystems in the cluster.
@@ -528,7 +529,7 @@ class Filesystem(MDSCluster):
     MDSCluster may be shared with other Filesystems.
     """
     def __init__(self, ctx, fs_config={}, fscid=None, name=None, create=False):
-        super(Filesystem, self).__init__(ctx)
+        super(FilesystemBase, self).__init__(ctx)
 
         self.name = name
         self.id = None
@@ -1778,3 +1779,5 @@ class Filesystem(MDSCluster):
             return result
         else:
             return self.rank_tell(['damage', 'ls'], rank=rank)
+
+Filesystem = FilesystemBase

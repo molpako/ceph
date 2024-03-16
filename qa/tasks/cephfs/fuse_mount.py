@@ -15,12 +15,12 @@ from tasks.cephfs.mount import CephFSMount, UMOUNT_TIMEOUT
 log = logging.getLogger(__name__)
 
 # Refer mount.py for docstrings.
-class FuseMount(CephFSMount):
+class FuseMountBase(CephFSMount):
     def __init__(self, ctx, test_dir, client_id, client_remote,
                  client_keyring_path=None, cephfs_name=None,
                  cephfs_mntpt=None, hostfs_mntpt=None, brxnet=None,
                  client_config={}):
-        super(FuseMount, self).__init__(ctx=ctx, test_dir=test_dir,
+        super(FuseMountBase, self).__init__(ctx=ctx, test_dir=test_dir,
             client_id=client_id, client_remote=client_remote,
             client_keyring_path=client_keyring_path, hostfs_mntpt=hostfs_mntpt,
             cephfs_name=cephfs_name, cephfs_mntpt=cephfs_mntpt, brxnet=brxnet,
@@ -534,3 +534,5 @@ print(_find_admin_socket("{client_name}"))
 
     def get_op_read_count(self):
         return self.admin_socket(['perf', 'dump', 'objecter'])['objecter']['osdop_read']
+
+FuseMount = FuseMountBase
